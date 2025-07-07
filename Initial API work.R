@@ -23,18 +23,26 @@ library(dplyr)
 
 
 #Going to start with Air Quality
-airquality_query <- function(pollutant = c("Ozone (O3)", "Nitrogen dioxide (NO2)", "Fine particles (PM 2.5)"),
-                             time_period = c("Summer 2023", "Winter 2022-23", "Summer 2022", "Winter 2021-22",
-                                             "Summer 2021", "Winter 2020-21", "Summer 2020")){
+airquality_query <- function(pollutant = NULL, year = NULL){
+  
+  #We want the user to be able to not specify parameters and get full dataset back
+  where_check <- character()
+  if(!is.null(pollutant)){
+    where_check <- c(where_check, paste0("name IN ('", paste(pollutant, collapse = "','"), "')"))
+  }
+  if(!is.null(year)){
+    start_date <- paste0(year, "-01-01T00:00:00")
+    end_date <- paste0(year, "-12-01T00:00:00.000")
+    where_check <- c(where_check, paste0("start_date BETWEEN '", start_date, "' AND '", end_date, "'"))
+  }
+  
   airq_url <- "https://data.cityofnewyork.us/resource/c3uy-2p5r.json"
-  airq_info <- httr::GET(airq_url, query = list(
-    "$where"  = paste0("name = '", pollutant, "' AND ","time_period = '", time_period, "'")
-    ))
+  airq_info <- httr::GET(airq_url, query = list("$where" = paste(where_check, collapse = " AND ")))
   airq_data <- fromJSON(rawToChar(airq_info$content))
   as_tibble(airq_data)
 }
 
-test1 <- airquality_query(pollutant = "Ozone (O3)", time_period = "Winter 2022-23")
+test1 <- airquality_query(year = 2022)
 
 
 
@@ -57,29 +65,42 @@ NYC_harbors <- list(
 )
 
 #Next doing Water Quality function
-waterquality_query <- function(weather = c("D", "W"), 
-                               harbor = c("Staten Island", "Hudson", "East River", "Jamaica Bay",
-                                          "Harlem River", "Triathlon", "Tributaries"),
-                               year){
+waterquality_query <- function(weather = NULL, harbor = NULL, year = NULL){
   
-  water_code <- NYC_harbors[[harbor]]
-  
-  start_date <- paste0(year, "-01-01T00:00:00")
-  end_date <- paste0(year, "-12-31T23:59:59")
+  #Want the user to be able not to specify weather, harbor or year and still obtain results
+  where_check <- character()
+  if (!is.null(weather)) {
+    where_check <- c(where_check, paste0("weather_condition_dry_or_wet = '", weather, "'"))
+  }
+  if (!is.null(harbor)){
+    water_code <- NYC_harbors[[harbor]]
+    where_check <- c(where_check, paste0("sampling_location IN ('",
+                                         paste(water_code, collapse = "','"), "')"))
+  }
+  if (!is.null(year)){
+    start_date <- paste0(year, "-01-01T00:00:00")
+    end_date <- paste0(year, "-12-31T23:59:59")
+    where_check <- c(where_check, paste0("sample_date BETWEEN '", start_date, "' AND '", end_date, "'"))
+  }
   
   waterq_url <- "https://data.cityofnewyork.us/resource/5uug-f49n.json"
-  waterq_info <- httr::GET(waterq_url, query = list(
-    "$where" = paste0("sampling_location IN ('", paste(water_code, collapse = "','"), "')", 
-                      " AND weather_condition_dry_or_wet = '", weather, "'",
-                      " AND sample_date BETWEEN '", start_date, "' AND '", end_date, "'")
-  ))
+  waterq_info <- httr::GET(waterq_url, query = list("$where" = paste(where_check, collapse = " AND ")))
   waterq_data <- fromJSON(rawToChar(waterq_info$content))
   as_tibble(waterq_data) |>
     mutate(year = substr(sample_date, 1, 4))
 }
 
-test <- waterquality_query("D", "Triathlon", year = 2004)
+test <- waterquality_query(harbor = "Harlem River", year = 2004)
 
 
 
+
+#Now moving on to making graphical summaries
+
+#Lets start with some contingency tables
+#Air quality
+table(test1$time_period)
+
+#Water quality
+table()
 
