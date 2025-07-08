@@ -8,6 +8,7 @@ library(tidyverse)
 library(bslib)
 library(ggplot2)
 library(ggridges)
+library(stringr)
 
 #Creating shiny app
 
@@ -62,8 +63,8 @@ ui <- page_fluid(
                          checkboxGroupInput("harbor", "Harbor Station for Water Quality", 
                                             choices = c("Staten Island", "Hudson", "East River", "Jamaica Bay",
                                                         "Harlem River", "Triathlon", "Tributaries"))),
-        uiOutput("cols_select"),
         actionButton("get", "Get Data"),
+        uiOutput("cols_select"),
         downloadButton("download", "Download Data")
       ),
       mainPanel(
@@ -82,7 +83,9 @@ ui <- page_fluid(
         uiOutput("sum_var2"),
         uiOutput("plot_var1"),
         uiOutput("plot_var2"),
-        uiOutput("plot_var3")
+        uiOutput("plot_var3"),
+        uiOutput("facet_q"),
+        uiOutput("facet_var")
       ),
       mainPanel(
         tableOutput("tableoutput"),
@@ -127,6 +130,7 @@ server <- function(input, output, session){
   #Allowing download of data
   output$download <- downloadHandler(
     filename = function(){
+      #extracting first word of data selected (Air or Water) using stringr
       paste0("nyc_data_", stringr::word(input$data_select, 1), ".csv")
     },
     content = function(file){
@@ -139,24 +143,40 @@ server <- function(input, output, session){
   #Selecting which variables are going to be looked at 
   output$sum_var1 <- renderUI({
     req(final_data())
-    selectInput("sum_var1", "Variable 1 - Summary", choices = names(final_data()), selected = final_data()[1])
+    selectInput("sum_var1", "Variable 1 - Summary", choices = names(final_data()))
   })
   output$sum_var2 <- renderUI({
     req(final_data())
-    selectInput("sum_var2", "Variable 2 - Summary", choices = names(final_data()), selected = final_data()[2])
+    selectInput("sum_var2", "Variable 2 - Summary 
+                (if Summary Statistics chosen, this must be a numeric variable!) ", 
+                choices = names(final_data()))
   })
   output$plot_var1 <- renderUI({
     req(final_data())
-    selectInput("plot_var1", "Variable 1 - Plot", choices = names(final_data()), selected = final_data()[1])
+    selectInput("plot_var1", "Variable 1 - Plot", choices = names(final_data()))
   })
   output$plot_var2 <- renderUI({
     req(final_data())
-    selectInput("plot_var2", "Variable 2 - Plot", choices = names(final_data()), selected = final_data()[2])
+    numeric <- names(final_data())[sapply(final_data(), is.numeric)]
+    selectInput("plot_var2", "Variable 2 - Plot (must be numeric)", choices = numeric)
   })
   output$plot_var3 <- renderUI({
     req(final_data())
-    selectInput("plot_var3", "Variable 3 - Plot", choices = names(final_data()), selected = final_data()[3])
+    character <- names(final_data())[sapply(final_data(), is.character)]
+    selectInput("plot_var3", "Variable 3 - Plot (color)", choices = character)
   })
+  output$facet_q <- renderUI({
+    req(final_data())
+    radioButtons("facet_q", "Facet this Plot?", choices = c("Yes", "No"), selected = "No")
+  })
+  output$facet_var <- renderUI({
+    req(final_data())
+    character <- names(final_data())[sapply(final_data(), is.character)]
+    if(input$facet_q == "Yes"){
+      selectInput("facet_var", "Facet Variable", choices = character)
+    }
+  })
+  
   
   #First the tables
   output$tableoutput <- renderTable({
@@ -170,10 +190,14 @@ server <- function(input, output, session){
     }
     if(input$summary_type == "Summary Statistics"){
       final_data() |>
-        group_by(final_data()[[input$sum_var1]]) |>
+        #I was having issues with my code here and did research that I might 
+        #need to do .data instead which is why I did so here and it worked
+        group_by(.data[[input$sum_var1]]) |>
         summarise(
-          Mean = mean(as.numeric(final_data()[[input$sum_var2]]), na.rm = TRUE),
-          N = n()
+          "Mean" = mean(.data[[input$sum_var2]], na.rm = TRUE),
+          "Median" = median(.data[[input$sum_var2]], na.rm = TRUE),
+          "Standard Deviation" = sd(.data[[input$sum_var2]], na.rm = TRUE),
+          "N" = n()
         )
     }
   })
@@ -183,28 +207,47 @@ server <- function(input, output, session){
     
     #Histogram
     if(input$plot_type == "Histogram"){
-      ggplot(final_data(), aes(x = final_data()[[input$plot_var1]])) +
-        geom_histogram(stat = "count")
+      plot <- ggplot(final_data(), aes(x = final_data()[[input$plot_var1]])) +
+        geom_histogram(stat = "count") +
+        labs(title = "Histogram of Selected Plot Variable 1 Counts", 
+             x = input$plot_var1)
+        
     }
     #Scatterplot
     else if(input$plot_type == "Scatterplot"){
-      ggplot(final_data(), aes(x = final_data()[[input$plot_var1]], 
-                               y = final_data()[[input$plot_var2]],
-                               color = final_data()[[input$plot_var3]])) +
-        geom_point()
+      plot <- ggplot(final_data(), aes(x = final_data()[[input$plot_var1]], 
+                                       y = final_data()[[input$plot_var2]],
+                                       color = final_data()[[input$plot_var3]])) +
+        geom_point() +
+        labs(title = "Scatterplot of Selected Plot Variables 1 and 2", 
+             x = input$plot_var1,
+             y = input$plot_var2,
+             color = input$plot_var3)
     }
     #Boxplot
     else if(input$plot_type == "Boxplot"){
-      ggplot(final_data(), aes(x = final_data()[[input$plot_var1]],
-                               y = final_data()[[input$plot_var2]])) +
-        geom_boxplot()
+      plot <- ggplot(final_data(), aes(x = final_data()[[input$plot_var1]],
+                                       y = final_data()[[input$plot_var2]])) +
+        geom_boxplot() +
+        labs(title = "Boxplot of Selected Plot Variables 1 and 2", 
+             x = input$plot_var1,
+             y = input$plot_var2)
     }
     #Heatmap
     else if(input$plot_type == "Ridgeline"){
-      ggplot(final_data(), aes(x = final_data()[[input$plot_var2]],
-                               y = final_data()[[input$plot_var1]])) +
-        geom_density_ridges()
+      plot <- ggplot(final_data(), aes(x = final_data()[[input$plot_var2]],
+                                       y = final_data()[[input$plot_var1]])) +
+        geom_density_ridges() +
+        labs(title = "Ridgeline Plot of Selected Plot Variables 1 and 2", 
+             x = input$plot_var2,
+             y = input$plot_var1)
     }
+    
+    if(input$facet_q == "Yes"){
+      plot <- plot + facet_wrap(~ final_data()[[input$facet_var]])
+    }
+    
+    plot
     
   })
 
