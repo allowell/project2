@@ -8,6 +8,7 @@ library(tidyverse)
 library(bslib)
 library(ggplot2)
 library(ggridges)
+library(purrr)
 library(stringr)
 
 #Creating shiny app
