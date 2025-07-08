@@ -1,4 +1,9 @@
 
+#Author: Allison McDowell
+#Date: July 9, 2025
+#Purpose: Code for API and summaries of data
+
+
 #I have decided to use the API of New York Open Data
 #There are lots of data to choose from here that will meet the 
 #requirements of this project
@@ -8,24 +13,11 @@ library(jsonlite)
 library(tibble)
 library(dplyr)
 library(tidyverse)
-
-#NYC_airquality_ID <- "https://data.cityofnewyork.us/resource/c3uy-2p5r.json"
-#NYC_airquality_info <- httr::GET(NYC_airquality_ID)
-#NYC_airquality_parsed <- fromJSON(rawToChar(NYC_airquality_info$content))
-#NYC_airquality <- as_tibble(NYC_airquality_parsed)
-#NYC_airquality
-
-#NYC_waterquality_ID <- "https://data.cityofnewyork.us/resource/5uug-f49n.json"
-#NYC_waterquality_info <- httr::GET(NYC_waterquality_ID)
-#NYC_waterquality_parsed <- fromJSON(rawToChar(NYC_waterquality_info$content))
-#NYC_waterquality <- as_tibble(NYC_waterquality_parsed)
-#NYC_waterquality
-
+library(bslib)
 
 
 #Going to start with Air Quality
 airquality_query <- function(pollutant = NULL, year = NULL){
-  
   #We want the user to be able to not specify parameters and get full dataset back
   where_check <- character()
   if(!is.null(pollutant)){
@@ -67,7 +59,6 @@ NYC_harbors <- list(
 
 #Next doing Water Quality function
 waterquality_query <- function(weather = NULL, harbor = NULL, year = NULL){
-  
   #Want the user to be able not to specify weather, harbor or year and still obtain results
   where_check <- character()
   if (!is.null(weather)) {
