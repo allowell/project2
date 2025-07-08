@@ -16,6 +16,7 @@ library(tidyverse)
 library(bslib)
 library(ggplot2)
 library(ggridges)
+library(purrr)
 
 
 #Going to start with Air Quality
@@ -132,7 +133,9 @@ waterquality_query <- function(weather = NULL, harbor = NULL, year = NULL){
   
   waterq_data <- as_tibble(waterq_data) 
   
-  waterq_data |>
+  waterq_data <- waterq_data |>
+    #Cleaning up the data because it's so large. removing difficult variables
+    select(-c("wind_speed_mph", "wind_direction_wind_direction", "sea_state", "type")) |>
     #Removing dates that are NA to avoid errors
     filter(!is.na(sample_date)) |>
     mutate(
@@ -157,8 +160,24 @@ waterquality_query <- function(weather = NULL, harbor = NULL, year = NULL){
                                  "SP1", "SP2", "WC1", "WC2", "WC3") ~ "Tributaries"
       
       ))
-  #Return the data
-  waterq_data
+  
+  #Changing all numeric data to numeric. Right now everything is in character (ugh)
+  #Selecting columns I want to change to numeric
+  waterq_data_numeric <- waterq_data |>
+    select(-sampling_location, -sample_date, -sample_time, -weather_condition_dry_or_wet,
+           -current_direction_current_direction, -year, -harbor) |>
+    map(as.numeric) |>
+    as_tibble()
+  #Selecting character columns
+  waterq_data_character <- waterq_data |>
+    select(sampling_location, sample_date, sample_time, weather_condition_dry_or_wet, 
+           current_direction_current_direction, year, harbor)
+  
+  #Return final data by binding character and numeric columns
+  #This is also nicer now because character is first then all numeric
+  waterq_data_final <- bind_cols(waterq_data_character, waterq_data_numeric)
+  waterq_data_final
+
 }
 
 #Testing the data again
