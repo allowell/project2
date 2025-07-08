@@ -6,6 +6,8 @@ library(tibble)
 library(dplyr)
 library(tidyverse)
 library(bslib)
+library(ggplot2)
+library(ggridges)
 
 #Creating shiny app
 
@@ -72,14 +74,19 @@ ui <- page_fluid(
     #Next tab, the data exploration
     nav_panel("Data Exploration", sidebarLayout(
       sidebarPanel(
-        selectInput("plot_type", "Plot Type", 
-                    choices = c("Scatterplot", "Histogram", "Boxplot", "Heatmap")),
         selectInput("summary_type", "Summary Type",
-                    choices = c("Contingency Table", "Summary Statistics"))
+                    choices = c("Contingency Table", "Summary Statistics")),
+        selectInput("plot_type", "Plot Type",
+                    choices = c("Histogram", "Scatterplot", "Boxplot", "Ridgeline")),
+        uiOutput("sum_var1"),
+        uiOutput("sum_var2"),
+        uiOutput("plot_var1"),
+        uiOutput("plot_var2"),
+        uiOutput("plot_var3")
       ),
       mainPanel(
-        plotOutput("plotoutput"),
-        tableOutput("tableoutput")
+        tableOutput("tableoutput"),
+        plotOutput("plotoutput")
       )
     ))
     )
@@ -123,12 +130,84 @@ server <- function(input, output, session){
       paste0("nyc_data_", stringr::word(input$data_select, 1), ".csv")
     },
     content = function(file){
-      write_csv(api_data(), file)
+      write_csv(final_data(), file)
     }
   )
   
   #Next working on the Data exploration tab
-  #
+  
+  #Selecting which variables are going to be looked at 
+  output$sum_var1 <- renderUI({
+    req(final_data())
+    selectInput("sum_var1", "Variable 1 - Summary", choices = names(final_data()), selected = final_data()[1])
+  })
+  output$sum_var2 <- renderUI({
+    req(final_data())
+    selectInput("sum_var2", "Variable 2 - Summary", choices = names(final_data()), selected = final_data()[2])
+  })
+  output$plot_var1 <- renderUI({
+    req(final_data())
+    selectInput("plot_var1", "Variable 1 - Plot", choices = names(final_data()), selected = final_data()[1])
+  })
+  output$plot_var2 <- renderUI({
+    req(final_data())
+    selectInput("plot_var2", "Variable 2 - Plot", choices = names(final_data()), selected = final_data()[2])
+  })
+  output$plot_var3 <- renderUI({
+    req(final_data())
+    selectInput("plot_var3", "Variable 3 - Plot", choices = names(final_data()), selected = final_data()[3])
+  })
+  
+  #First the tables
+  output$tableoutput <- renderTable({
+    req(final_data(), input$sum_var1, input$sum_var2)
+    #Contingency table
+    if(input$summary_type == "Contingency Table"){
+      return(table(as.factor(final_data()[[input$sum_var1]]), 
+                          as.factor(final_data()[[input$sum_var2]])))
+      print(input$sum_var1)
+      print(input$sum_var2)
+    }
+    if(input$summary_type == "Summary Statistics"){
+      final_data() |>
+        group_by(final_data()[[input$sum_var1]]) |>
+        summarise(
+          Mean = mean(as.numeric(final_data()[[input$sum_var2]]), na.rm = TRUE),
+          N = n()
+        )
+    }
+  })
+  
+  #Next the plots
+  output$plotoutput <- renderPlot({
+    
+    #Histogram
+    if(input$plot_type == "Histogram"){
+      ggplot(final_data(), aes(x = final_data()[[input$plot_var1]])) +
+        geom_histogram(stat = "count")
+    }
+    #Scatterplot
+    else if(input$plot_type == "Scatterplot"){
+      ggplot(final_data(), aes(x = final_data()[[input$plot_var1]], 
+                               y = final_data()[[input$plot_var2]],
+                               color = final_data()[[input$plot_var3]])) +
+        geom_point()
+    }
+    #Boxplot
+    else if(input$plot_type == "Boxplot"){
+      ggplot(final_data(), aes(x = final_data()[[input$plot_var1]],
+                               y = final_data()[[input$plot_var2]])) +
+        geom_boxplot()
+    }
+    #Heatmap
+    else if(input$plot_type == "Ridgeline"){
+      ggplot(final_data(), aes(x = final_data()[[input$plot_var2]],
+                               y = final_data()[[input$plot_var1]])) +
+        geom_density_ridges()
+    }
+    
+  })
+
   
 }
 

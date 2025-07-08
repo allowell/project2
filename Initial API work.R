@@ -14,6 +14,8 @@ library(tibble)
 library(dplyr)
 library(tidyverse)
 library(bslib)
+library(ggplot2)
+library(ggridges)
 
 
 #Going to start with Air Quality
@@ -33,11 +35,11 @@ airquality_query <- function(pollutant = NULL, year = NULL){
   airq_info <- httr::GET(airq_url, query = list("$where" = paste(where_check, collapse = " AND ")))
   airq_data <- fromJSON(rawToChar(airq_info$content))
   
-  as_tibble(airq_data)
+  as_tibble(airq_data) |>
+    mutate(data_value = as.numeric(data_value))
 }
 
 test1 <- airquality_query(pollutant = c("Ozone (O3)", "Nitrogen dioxide (NO2)"), year = 2022)
-
 
 
 #Making Groups for NYC Harbors
