@@ -42,14 +42,24 @@ ui <- page_fluid(
       sidebarPanel(
         selectInput("data_select", "Select Dataset",
                     choices = c("Air Quality", "Water Quality")),
-        numericInput("year", "Year", value = 2020, min = 2000, max = 2023),
-        checkboxGroupInput("pollutant", "Pollutant for Air Quality", 
-                    choices = c("Ozone (O3)", "Nitrogen dioxide (NO2)", "Fine particles (PM 2.5)")),
-        checkboxGroupInput("weather", "Weather for Water Quality", 
-                    choices = c("Wet", "Dry")),
-        checkboxGroupInput("harbor", "Harbor Station for Water Quality", 
-                    choices = c("Staten Island", "Hudson", "East River", "Jamaica Bay",
-                                "Harlem River", "Triathlon", "Tributaries")),
+        
+        #Conditional based on Air Quality
+        conditionalPanel(condition = "input.data_select == 'Air Quality'",
+                         numericInput("year_air", "Year", value = 2020, min = 2020, max = 2023)),
+        conditionalPanel(condition = "input.data_select == 'Air Quality'",
+                         checkboxGroupInput("pollutant", "Pollutant for Air Quality", 
+                                            choices = c("Ozone (O3)", "Nitrogen dioxide (NO2)", 
+                                                        "Fine particles (PM 2.5)"))),
+        conditionalPanel(condition = "input.data_select == 'Water Quality'",
+                         sliderInput("year_water", "Year", value = c(2018, 2020), min = 2000, max = 2023),
+                         step = 1),
+        conditionalPanel(condition = "input.data_select == 'Water Quality'",
+                         checkboxGroupInput("weather", "Weather for Water Quality", 
+                                            choices = c("Wet", "Dry"))),
+        conditionalPanel(condition = "input.data_select == 'Water Quality'",
+                         checkboxGroupInput("harbor", "Harbor Station for Water Quality", 
+                                            choices = c("Staten Island", "Hudson", "East River", "Jamaica Bay",
+                                                        "Harlem River", "Triathlon", "Tributaries"))),
         uiOutput("cols_select"),
         actionButton("get", "Get Data"),
         downloadButton("download", "Download Data")
@@ -82,10 +92,10 @@ server <- function(input, output, session){
   #Get data based on which they want (air or water)
   api_data <- eventReactive(input$get, {
     if(input$data_select == "Air Quality"){
-      airquality_query(pollutant = input$pollutant, year = input$year)
+      airquality_query(pollutant = input$pollutant, year = input$year_air)
     }
     else if(input$data_select == "Water Quality"){
-      waterquality_query(weather = input$weather, harbor = input$harbor, year = input$year)
+      waterquality_query(weather = input$weather, harbor = input$harbor, year = input$year_water)
     }
   })
   

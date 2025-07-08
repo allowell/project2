@@ -32,6 +32,7 @@ airquality_query <- function(pollutant = NULL, year = NULL){
   airq_url <- "https://data.cityofnewyork.us/resource/c3uy-2p5r.json"
   airq_info <- httr::GET(airq_url, query = list("$where" = paste(where_check, collapse = " AND ")))
   airq_data <- fromJSON(rawToChar(airq_info$content))
+  
   as_tibble(airq_data)
 }
 
@@ -70,7 +71,7 @@ waterquality_query <- function(weather = NULL, harbor = NULL, year = NULL){
   if (!is.null(weather)) {
     weather_vals <- unlist(weather_types[weather])
     where_check <- c(where_check, paste0("weather_condition_dry_or_wet IN ('", 
-                                         paste(weather_vals, collapse = "','"), "'"))
+                                         paste(weather_vals, collapse = "','"), "')"))
   }
   if (!is.null(harbor)){
     water_code <- NYC_harbors[harbor] |> unlist()
@@ -78,15 +79,22 @@ waterquality_query <- function(weather = NULL, harbor = NULL, year = NULL){
                                          paste(water_code, collapse = "','"), "')"))
   }
   if (!is.null(year)){
-    start_date <- paste0(year, "-01-01T00:00:00")
-    end_date <- paste0(year, "-12-31T23:59:59")
+    start_date <- paste0(min(year), "-01-01T00:00:00")
+    end_date <- paste0(max(year), "-12-31T23:59:59")
     where_check <- c(where_check, paste0("sample_date BETWEEN '", start_date, "' AND '", end_date, "'"))
   }
   
   waterq_url <- "https://data.cityofnewyork.us/resource/5uug-f49n.json"
   waterq_info <- httr::GET(waterq_url, query = list("$where" = paste(where_check, collapse = " AND ")))
   waterq_data <- fromJSON(rawToChar(waterq_info$content))
-  waterq_data <- as_tibble(waterq_data) |>
+
+  print(str(waterq_data))
+  print(names(waterq_data))
+  
+  waterq_data <- as_tibble(waterq_data) 
+  
+  waterq_data |>
+    filter(!is.na(sample_date)) |>
     mutate(
       year = substr(sample_date, 1, 4),
       harbor = case_when(
