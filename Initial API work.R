@@ -59,10 +59,18 @@ NYC_harbors <- list(
 
 #Next doing Water Quality function
 waterquality_query <- function(weather = NULL, harbor = NULL, year = NULL){
+  #When investigating data, found there are multiple types of weather documentation
+  weather_types <- list(
+    "Wet" = c("Wet", "W", "WET"),
+    "Dry" = c("Dry", "D")
+  )
+  
   #Want the user to be able not to specify weather, harbor or year and still obtain results
   where_check <- character()
   if (!is.null(weather)) {
-    where_check <- c(where_check, paste0("weather_condition_dry_or_wet = '", weather, "'"))
+    weather_vals <- unlist(weather_types[weather])
+    where_check <- c(where_check, paste0("weather_condition_dry_or_wet IN ('", 
+                                         paste(weather_vals, collapse = "','"), "'"))
   }
   if (!is.null(harbor)){
     water_code <- NYC_harbors[harbor] |> unlist()
