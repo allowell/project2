@@ -135,7 +135,8 @@ waterquality_query <- function(weather = NULL, harbor = NULL, year = NULL){
   
   waterq_data <- waterq_data |>
     #Cleaning up the data because it's so large. removing difficult variables
-    select(-c("wind_speed_mph", "wind_direction_wind_direction", "sea_state", "type")) |>
+    select(-c("wind_speed_mph", "wind_direction_wind_direction", "sea_state", "type",
+              "current_direction_current_direction")) |>
     #Removing dates that are NA to avoid errors
     filter(!is.na(sample_date)) |>
     mutate(
@@ -164,14 +165,14 @@ waterquality_query <- function(weather = NULL, harbor = NULL, year = NULL){
   #Changing all numeric data to numeric. Right now everything is in character (ugh)
   #Selecting columns I want to change to numeric
   waterq_data_numeric <- waterq_data |>
-    select(-sampling_location, -sample_date, -sample_time, -weather_condition_dry_or_wet,
-           -current_direction_current_direction, -year, -harbor) |>
+    select(-sampling_location, -sample_date, -sample_time, -weather_condition_dry_or_wet, 
+           -year, -harbor) |>
     map(as.numeric) |>
     as_tibble()
   #Selecting character columns
   waterq_data_character <- waterq_data |>
-    select(sampling_location, sample_date, sample_time, weather_condition_dry_or_wet, 
-           current_direction_current_direction, year, harbor)
+    select(sampling_location, sample_date, sample_time, weather_condition_dry_or_wet,
+           year, harbor)
   
   #Return final data by binding character and numeric columns
   #This is also nicer now because character is first then all numeric

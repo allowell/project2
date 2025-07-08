@@ -65,7 +65,7 @@ ui <- page_fluid(
         #Conditional based on Water Quality
         #Select range of years using slider
         conditionalPanel(condition = "input.data_select == 'Water Quality'",
-                         sliderInput("year_water", "Year", value = c(2018, 2020), min = 1909, max = 2023),
+                         sliderInput("year_water", "Year", value = c(2010, 2020), min = 1909, max = 2023),
                          step = 1),
         #Choose weather condition
         conditionalPanel(condition = "input.data_select == 'Water Quality'",
@@ -185,7 +185,7 @@ server <- function(input, output, session){
   })
   output$plot_var2 <- renderUI({
     req(final_data())
-    #Requiring that this variable be numeric, since one has to be for the plots
+    #Only allowing this one to be numeric using sapply function
     numeric <- names(final_data())[sapply(final_data(), is.numeric)]
     selectInput("plot_var2", "Variable 2 - Plot (must be numeric)", choices = numeric)
   })
@@ -224,10 +224,10 @@ server <- function(input, output, session){
         #need to do .data instead which is why I did so here and it worked
         group_by(.data[[input$sum_var1]]) |>
         summarise(
-          "Mean" = mean(.data[[input$sum_var2]], na.rm = TRUE),
-          "Median" = median(.data[[input$sum_var2]], na.rm = TRUE),
-          "Standard Deviation" = sd(.data[[input$sum_var2]], na.rm = TRUE),
-          "N" = n()
+          "Mean" = mean(as.numeric(.data[[input$sum_var2]]), na.rm = TRUE),
+          "Median" = median(as.numeric(.data[[input$sum_var2]]), na.rm = TRUE),
+          "Standard Deviation" = sd(as.numeric(.data[[input$sum_var2]]), na.rm = TRUE),
+          "N" = sum(!is.na(as.numeric(.data[[input$sum_var2]])))
         )
     }
   })
